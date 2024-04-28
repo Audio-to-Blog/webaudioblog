@@ -108,7 +108,7 @@ async fn check_status(query: web::Query<HashMap<String, String>>, state: web::Da
 }
 
 async fn index() -> impl Responder {
-    fs::NamedFile::open_async("./templates/index.html").await.unwrap()
+    fs::NamedFile::open_async("index.html").await.unwrap()
 }
 
 
