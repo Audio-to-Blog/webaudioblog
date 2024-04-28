@@ -1,7 +1,7 @@
 FROM rust:1.68 as build-env
 WORKDIR /app
-COPY . /app
-RUN ls -la
+COPY ./api /app
+RUN ls 
 RUN cargo build --release
 
 FROM gcr.io/distroless/cc
