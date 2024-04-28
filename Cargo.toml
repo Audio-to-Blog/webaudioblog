@@ -1,0 +1,21 @@
+[package]
+name = "s3_uploader" # Change this to your actual project name
+version = "0.1.0"
+edition = "2021"
+
+# Dependencies
+[dependencies]
+actix-web = "4.0"
+actix-files = "0.6.0-beta.8" # For static file serving
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+reqwest = { version = "0.11.27", features = ["json"] }
+tokio = { version = "1", features = ["full"] }
+dotenv = "0.15.0"
+env_logger = "0.9.0"
+# Use the correct version and features for aws-sdk-s3
+aws-sdk-s3 = "0.15.0"
+futures-util = "0.3"
+tokio-util = { version = "0.6", features = ["codec"] }
+# Other dependencies that your code may require...
+
