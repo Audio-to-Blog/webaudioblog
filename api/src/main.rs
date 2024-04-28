@@ -1,12 +1,18 @@
+use std::env;
 use actix_files as fs;
-
+use actix_web::middleware::Compat;
 use actix_multipart::form::{tempfile::TempFile, text::Text, MultipartForm};
-use actix_web::{post, web, App, Error, HttpResponse, HttpServer, Responder};
+use actix_web::{post, web, App, Error, HttpResponse, HttpServer, Responder, get};
+use actix_web_lab::respond::Html;
 
+use tracing::{Subscriber, subscriber::set_global_default};
+use tracing_actix_web::TracingLogger;
+use tracing_log::LogTracer;
+use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
+use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
 
 
 use serde_json::json;
-use tracing_actix_web::TracingLogger;
 use uuid::Uuid;
 
 mod client;
@@ -18,8 +24,6 @@ use client::Client;
 
 #[derive(Debug, MultipartForm)]
 struct UploadForm {
-    namespace: Text<String>,
-
     #[multipart(rename = "file")]
     files: Vec<TempFile>,
 }
@@ -30,21 +34,18 @@ async fn upload_to_s3(
     MultipartForm(form): MultipartForm<UploadForm>,
 ) -> Result<impl Responder, Error> {
     tracing::info!("entering /upload");
-    let namespace = form.namespace.into_inner();
     let files = form.files;
 
-    tracing::info!("namespace = {namespace:?}");
     tracing::info!("tmp_files = {files:?}");
 
     // make key prefix (make sure it ends with a forward slash)
-    let s3_key_prefix = format!("uploads/{namespace}/");
+    let s3_key_prefix = format!("");
 
     // upload temp files to s3 and then remove them
     let uploaded_files = s3_client.upload_files(files, &s3_key_prefix).await?;
 
     Ok(HttpResponse::Ok().json(json!({
         "uploadedFiles": uploaded_files,
-        "meta": json!({ "namespace": namespace }),
     })))
 }
 
@@ -124,22 +125,55 @@ async fn process_file(path: web::Path<String>) -> impl Responder {
     HttpResponse::Ok()
 }
 
+/// Compose multiple layers into a `tracing`'s subscriber.
+pub fn get_subscriber(
+    name: String,
+    env_filter: String
+) -> impl Subscriber + Send + Sync {
+    let env_filter = EnvFilter::try_from_default_env()
+        .unwrap_or(EnvFilter::new(env_filter));
+    let formatting_layer = BunyanFormattingLayer::new(
+        name.into(),
+        std::io::stdout
+    );
+    Registry::default()
+        .with(env_filter)
+        .with(JsonStorageLayer)
+        .with(formatting_layer)
+}
+
+/// Register a subscriber as global default to process span data.
+///
+/// It should only be called once!
+pub fn init_subscriber(subscriber: impl Subscriber + Send + Sync) {
+    LogTracer::init().expect("Failed to set logger");
+    set_global_default(subscriber).expect("Failed to set subscriber");
+}
+
+#[get("/")]
+async fn index() -> impl Responder {
+    Html(include_str!("../../templates/index.html").to_owned())
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    dotenv::dotenv().ok();
     let config = aws_config::load_from_env().await;
-    let s3_client = aws_sdk_s3::Client::new(&config);
-
+    let client = Client::new(&config);
     std::fs::create_dir_all("./tmp").unwrap();
+
+    let subscriber = get_subscriber("app".into(), "debug".into());
+    init_subscriber(subscriber);
 
     tracing::info!("Starting service at 127.0.0.1:8000");
     HttpServer::new(move || {
         App::new()
-            .service(fs::Files::new("/", "../templates").index_file("index.html"))
+            .service(index)
             // .route("/upload", web::post().to(upload_to_s3))
-            // .route("/process/{filename}", web::post().to(process_file))
+            .route("/process/{filename}", web::post().to(process_file))
             .service(upload_to_s3)
             .wrap(TracingLogger::default())
-            .app_data(web::Data::new(s3_client.clone()))
+            .app_data(web::Data::new(client.clone()))
     })
         .bind("127.0.0.1:8000")?
         .run()
