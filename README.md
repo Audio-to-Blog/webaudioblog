@@ -2,6 +2,8 @@
 
 This is a simple Rust Actix web application that allows users to upload the audio file of a conversation/interview and get a blog summarizing what was discussed. 
 
+## Demo
+
 ## Components
 
 The user uploaded audio file is automatically stored to an AWS S3 bucket. The audio file is processed using AWS Step Functions, which uses a speech to text model and an LLM to generate automatically generate blog about the conversation. 
@@ -18,9 +20,6 @@ Github Actions continuous integration and continuous deployment (CI/CD) pipeline
 
 #### Monitoring and Metrics
  Amazon CloudWatch is enabled on AWS Lambda functions for log group creation, log streams, and log events. For debugging with rust web service, the code is augmented with dense tracing and console outputs. The metrics are kept track of through the respective services' AWS portals. 
-
-
-## Demo Video 
 
 ## Deployment (Local)
 
