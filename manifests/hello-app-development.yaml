@@ -29,6 +29,9 @@ spec:
           limits:
             cpu: "512m"   # Limits the CPU usage to half a core.
             memory: "1Gi"  # Limits the memory usage to 1 GiB.
+         envFrom:
+        - secretRef:
+            name: my-secret 
   strategy:
     type: RollingUpdate
     rollingUpdate:
