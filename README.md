@@ -6,6 +6,9 @@ Find the website here: https://blogger.sanjeev.one/
 
 ## Demo
 
+https://youtu.be/tHNcZzEcKlg
+
+
 ## Components
 
 The user uploaded audio file is automatically stored to an AWS S3 bucket. The audio file is processed using AWS Step Functions, which uses an open source speech to text model and LLM to generate automatically generate blog about the conversation. 
