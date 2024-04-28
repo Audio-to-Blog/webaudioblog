@@ -6,14 +6,12 @@
         "dest": "/api/main.py"
       },
       {
-        "src": "/(.*)",
-        "dest": "/public/$1"
-      }
-    ],
-    "rewrites": [
+        "handle": "filesystem"
+      },
       {
-        "source": "/(.*)",
-        "destination": "/public/index.html"
+        "src": "/(.*)",
+        "dest": "/public/index.html",
+        "status": 404
       }
     ]
   }
