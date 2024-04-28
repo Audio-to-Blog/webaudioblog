@@ -15,3 +15,5 @@ Cargo.lock
 
 .ds_store
 
+.DS_Store
+api/.DS_Store
