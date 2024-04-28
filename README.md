@@ -38,18 +38,85 @@ Our CI/CD pipeline, implemented via GitHub Actions, builds the Docker image and 
 #### Monitoring and Metrics
  Amazon CloudWatch is enabled on AWS Lambda functions for log group creation, log streams, and log events. For debugging with rust web service, the code is augmented with dense tracing and console outputs. The metrics are kept track of through the respective services' AWS portals. 
 
-## Deployment (Vercel)
 
-1. Clone the repository. Make sure Rust is installed.
-2. 
-3. Set up your AWS credentials in your environment variables:
-    - `S3_KEY`: Your AWS S3 access key.
-    - `S3_SECRET`: Your AWS S3 secret key.
-4. Run `uvicorn main:app --reload` in your terminal.
+## Deployment Setup (AWS EKS using GitHub Actions)
 
-You will now be able to access the service at `http://127.0.0.1:8080/`.
+1. **Clone the Repository**:
+   - Ensure you have Rust installed on your local machine.
+   - Clone the GitHub repository to your local environment using `git clone [repository-url]`.
 
-To deploy the application on Vercel, create a new Project and import this git repository. Vercel will then parse the `vercel.json` document included in the repo and provide you with a link to access the service.
+2. **Configure AWS Credentials**:
+   - Set up your AWS credentials securely. Use environment variables on your local machine or configure them as secrets in GitHub for the repository:
+     - `AWS_ACCESS_KEY_ID`: Your AWS access key ID.
+     - `AWS_SECRET_ACCESS_KEY`: Your AWS secret key.
+     - `AWS_DEFAULT_REGION`: Your AWS region (e.g., `us-east-1`).
+
+3. **Local Testing (Optional)**:
+   - Build and run your Docker container locally to ensure everything is working as expected before deploying:
+     - `docker build -t your-image-name .`
+     - `docker run -p 8080:8080 your-image-name`
+Adding secrets to AWS EKS involves securely managing sensitive data like API keys, credentials, and configuration details. You can use Kubernetes secrets or integrate with AWS Secrets Manager for enhanced security. Here are detailed steps to add secrets to your AWS EKS environment using both Kubernetes secrets and AWS Secrets Manager:
+
+### Setup Kubernetes Secrets
+
+4. **Create a Kubernetes Secret**:
+   - Create a YAML file to define your secret. For example, `my-secret.yaml`:
+     ```yaml
+     apiVersion: v1
+     kind: Secret
+     metadata:
+       name: my-secret
+     type: Opaque
+     data:
+       AWS_ACCESS_KEY_ID: [base64 encoded value]
+       AWS_SECRET_ACCESS_KEY: [base64 encoded value]
+     ```
+   - Replace `[base64 encoded value]` with your base64-encoded AWS credentials. You can encode your credentials using `echo -n 'your-value' | base64`.
+
+5. **Apply the Secret to Your Cluster**:
+   - Use `kubectl` to apply the secret to your cluster:
+     ```bash
+     kubectl apply -f my-secret.yaml
+     ```
+
+6. **Reference the Secret in Your Deployment**:
+   - Modify your deployment YAML to use the secret as environment variables:
+     ```yaml
+     apiVersion: apps/v1
+     kind: Deployment
+     metadata:
+       name: my-deployment
+     spec:
+       containers:
+       - name: my-container
+         image: my-image
+         env:
+           - name: AWS_ACCESS_KEY_ID
+             valueFrom:
+               secretKeyRef:
+                 name: my-secret
+                 key: AWS_ACCESS_KEY_ID
+           - name: AWS_SECRET_ACCESS_KEY
+             valueFrom:
+               secretKeyRef:
+                 name: my-secret
+                 key: AWS_SECRET_ACCESS_KEY
+     ```
+
+7. **Push Changes**:
+   - Make any necessary changes to your application or Dockerfile.
+   - Push your changes to the main branch of your GitHub repository:
+     - `git add .`
+     - `git commit -m "Prepare for deployment"`
+     - `git push origin main`
+
+8. **Automatic Deployment**:
+   - The push to the main branch will trigger the GitHub Actions workflow.
+   - Monitor the workflow execution within the GitHub Actions tab to ensure the build and deployment processes complete successfully.
+
+9. **Verify Deployment**:
+   - Once the deployment is successful, check the application's functionality by accessing the provided Load Balancer URL from AWS EKS.
+
 
 ## Usage (Local)
 
