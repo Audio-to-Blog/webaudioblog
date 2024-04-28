@@ -1,15 +1,18 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.templating import Jinja2Templates
+from starlette.staticfiles import StaticFiles
 from starlette.status import HTTP_400_BAD_REQUEST
-import boto3
 import os
 import uuid
 import requests
 from aiobotocore.session import get_session
 
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="public"), name="static")
 templates = Jinja2Templates(directory='templates')
+
+# Your existing code follows
 
 S3_BUCKET = 'transcribe-ids721'
 session = get_session()

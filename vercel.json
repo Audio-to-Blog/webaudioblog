@@ -1,18 +1,17 @@
 {
     "version": 2,
+    "builds": [{
+      "src": "api/main.py",
+      "use": "@vercel/python"
+    }],
     "routes": [
       {
         "src": "/api/(.*)",
         "dest": "/api/main.py"
       },
       {
-        "handle": "filesystem"
-      },
-      {
         "src": "/(.*)",
-        "methods": ["GET"],
-        "dest": "/public/index.html",
-        "status": 404
+        "dest": "/api/main.py"
       }
     ]
   }
