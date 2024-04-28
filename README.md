@@ -54,8 +54,9 @@ To deploy the application on Vercel, create a new Project and import this git re
 2. Click on the "Choose File" button to select a file for upload.
 3. Click on the "Upload" button to upload the selected file to the AWS S3 bucket.
 4. Once the file is uploaded, you will receive a message confirming the successful upload and the filename.
-5. To process the uploaded file, navigate to `https://blogger.sanjeev.one/process` and enter the filename in the provided field.
-6. Click on the "Process" button to start the processing. The processing status will be updated in real-time.
+5. The file is automatically processed by the rust web service with `https://blogger.sanjeev.one/process` and parsing filename.
+6. Wait for the audio to be transcribed and turned into a blog. The screen will display "Processing" with a spinning wheel.
+7. Blog will display.
 
 ## Team Size and Makeup
 The creators are:
