@@ -46,6 +46,8 @@ To deploy the application on Vercel, create a new Project and import this git re
 5. To process the uploaded file, navigate to `https://audio-to-blog.vercel.app/process` and enter the filename in the provided field.
 6. Click on the "Process" button to start the processing. The processing status will be updated in real-time.
 
-## Note
+## Team Size and Makeup
+The creators of this project are: 
+Hadi Chaudhri (Rust Web Service), Peter Liu (Rust Web Service), Benjamin Chauhan (Lambda Functions), Sanjeev (Step Function and Dockerization)
 
-This application is for demonstration purposes only. It is not intended for production use.
+
