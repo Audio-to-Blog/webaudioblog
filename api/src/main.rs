@@ -3,6 +3,7 @@ mod s3;
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use actix_files as fs;
 use actix_multipart::Multipart;
+use actix_web::{post, Error};
 use futures::{StreamExt, TryStreamExt};
 use std::str::FromStr;
 use uuid::Uuid;
@@ -22,32 +23,90 @@ struct AppState {
     s3_client: S3Client,
 }
 
-async fn upload_file(mut payload: Multipart, data: web::Data<AppState>) -> impl Responder {
-    while let Ok(Some(mut field)) = payload.try_next().await {
-        let content_type = field.content_disposition().unwrap().parameters[0].clone().value.unwrap();
-        let filename = format!("{}-{}", Uuid::new_v4(), field.content_disposition().unwrap().get_filename().unwrap());
-        let mut file = web::block(|| std::fs::File::create(&filename)).await.unwrap();
-        while let Some(chunk) = field.next().await {
+
+#[post("/image", wrap = "HttpAuthentication::bearer(auth::validator)")]
+async fn file_save_rest(req: HttpRequest, mut payload: Payload) -> Result<HttpResponse, Error> {
+    // let filename = parse_filename_from_uri(&req.uri().to_string())
+    //     .ok_or_else(|| actix_web::error::ParseError::Incomplete)?;
+    let header = req
+        .headers()
+        .get("Content-Type")
+        .ok_or_else(|| actix_web::error::ParseError::Incomplete)?;
+    let file_fmt = header.to_str().unwrap().replace("image/", "");
+    let filename = format!("{}.{}", id::PostId::generate().to_string(), file_fmt);
+    let re =
+        regex::Regex::new(r"([a-zA-Z0-9\s_\\.\-\(\):])+(.webp|.jpeg|.png|.gif|.jpg|.tiff|.bmp)$")
+            .unwrap();
+    let valid;
+    if re.is_match(&filename) {
+        let filepath = format!("./static/images/{}", sanitize_filename::sanitize(&filename));
+        let mut f = async_std::fs::File::create(filepath).await?;
+        while let Some(chunk) = payload.next().await {
             let data = chunk.unwrap();
-            file = web::block(move || file.unwrap().write_all(&data).map(|_| file)).await.unwrap();
+            f.write_all(&data).await?;
         }
+        valid = true;
+    } else {
+        valid = false;
+    };
+    if valid {
+        Ok(HttpResponse::Ok().json(json!({
+            "url": format!("{}/images/{}", *BASE_URL, filename),
+            "deletion_url": format!("{}/delete/{}", *BASE_URL,filename)
+        })))
+    } else {
+        Ok(HttpResponse::BadRequest().json(json!({
+            "message": "No valid Image"
+        })))
+    }
+}
 
-        // Read the file into a Vec<u8>
-        let mut file = web::block(|| std::fs::File::open(&filename)).await.unwrap();
-        let mut buffer = Vec::new();
-        file.unwrap().read_to_end(&mut buffer).unwrap();
-
-        // Use the put_file function from the s3 module
-        let result = data.s3_client.put_file("transcribe-ids721", &filename, buffer).await;
-
-        match result {
-            Ok(_) => return HttpResponse::Ok().json(json!({ "message": "File uploaded successfully", "filename": filename })),
-            Err(_) => return HttpResponse::BadRequest().body("Failed to upload file"),
+async fn save_file(mut payload: Multipart) -> Result<HttpResponse, Error> {
+    let mut f_n = "".to_string();
+    let mut valid = false;
+    let mut filevec = Vec::new();
+    while let Ok(Some(mut field)) = payload.try_next().await {
+        let content_type = field
+            .content_disposition()
+            .ok_or_else(|| actix_web::error::ParseError::Incomplete)?;
+        println!("{:?}", content_type);
+        let filename = content_type
+            .get_filename()
+            .ok_or_else(|| actix_web::error::ParseError::Incomplete)?;
+        let re = regex::Regex::new(
+            r"([a-zA-Z0-9\s_\\.\-\(\):])+(.webp|.jpeg|.png|.gif|.jpg|.tiff|.bmp)$",
+        )
+            .unwrap();
+        if re.is_match(filename) {
+            let out = filename.split(".").collect::<Vec<&str>>()[1];
+            let filename = format!("{}.{}", id::PostId::generate().to_string(), out);
+            println!("{}", filename);
+            let filepath = format!("./static/images/{}", sanitize_filename::sanitize(&filename));
+            f_n = filename.to_string();
+            let mut f = async_std::fs::File::create(filepath).await?;
+            while let Some(chunk) = field.next().await {
+                let data = chunk.unwrap();
+                f.write_all(&data).await?;
+            }
+            filevec.push(json!({
+                "url": format!("{}/images/{}", *BASE_URL, f_n) ,
+                "deletion_url": format!("{}/delete/{}", *BASE_URL,f_n)
+            }));
+            valid = true;
+        } else {
+            valid = false;
         }
     }
-
-    HttpResponse::BadRequest().body("Failed to upload file")
+    //let uri = req.uri();
+    if valid {
+        Ok(HttpResponse::Ok().json(json!({ "images": filevec })))
+    } else {
+        Ok(HttpResponse::BadRequest().json(json!({
+            "message": "No valid Image"
+        })))
+    }
 }
+
 
 async fn process_file(path: web::Path<String>) -> impl Responder {
     let filename = path.into_inner();
