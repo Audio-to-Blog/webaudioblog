@@ -73,6 +73,9 @@ jobs:
 
 
     - name: Update kubeconfig
+      env:
+             ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}        
+             IMAGE_TAG: ${{ steps.commit.outputs.short }}
       run: |
         aws eks --region $AWS_REGION update-kubeconfig --name $EKS_CLUSTER_NAME
     - name: Set image in manifests
