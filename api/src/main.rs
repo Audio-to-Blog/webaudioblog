@@ -1,69 +1,54 @@
-mod s3;
-
-use actix_web::{web, App, HttpResponse, HttpServer, Responder, HttpRequest};
 use actix_files as fs;
-use actix_multipart::Multipart;
-use actix_web::{post, Error};
-use futures::{StreamExt, TryStreamExt};
-use std::str::FromStr;
-use uuid::Uuid;
-use reqwest::Client;
+
+use actix_multipart::form::{tempfile::TempFile, text::Text, MultipartForm};
+use actix_web::{post, web, App, Error, HttpResponse, HttpServer, Responder};
+
+
+
 use serde_json::json;
-use std::io::Read;
-use std::io::Write;
-use actix_web::web::Payload;
-use s3::PutFile;
-use aws_sdk_s3::Client as S3Client;
+use tracing_actix_web::TracingLogger;
+use uuid::Uuid;
 
+mod client;
 
-async fn index() -> impl Responder {
-    HttpResponse::Ok().body("Hello world!")
+mod upload_file;
+
+use upload_file::UploadedFile;
+use client::Client;
+
+#[derive(Debug, MultipartForm)]
+struct UploadForm {
+    namespace: Text<String>,
+
+    #[multipart(rename = "file")]
+    files: Vec<TempFile>,
 }
 
-struct AppState {
-    s3_client: S3Client,
+#[post("/upload")]
+async fn upload_to_s3(
+    s3_client: web::Data<Client>,
+    MultipartForm(form): MultipartForm<UploadForm>,
+) -> Result<impl Responder, Error> {
+    tracing::info!("entering /upload");
+    let namespace = form.namespace.into_inner();
+    let files = form.files;
+
+    tracing::info!("namespace = {namespace:?}");
+    tracing::info!("tmp_files = {files:?}");
+
+    // make key prefix (make sure it ends with a forward slash)
+    let s3_key_prefix = format!("uploads/{namespace}/");
+
+    // upload temp files to s3 and then remove them
+    let uploaded_files = s3_client.upload_files(files, &s3_key_prefix).await?;
+
+    Ok(HttpResponse::Ok().json(json!({
+        "uploadedFiles": uploaded_files,
+        "meta": json!({ "namespace": namespace }),
+    })))
 }
 
-
-#[post("/image")]
-async fn file_save_rest(req: HttpRequest, mut payload: Payload) -> Result<HttpResponse, Error> {
-    // // let filename = parse_filename_from_uri(&req.uri().to_string())
-    // //     .ok_or_else(|| actix_web::error::ParseError::Incomplete)?;
-    // let header = req
-    //     .headers()
-    //     .get("Content-Type")
-    //     .ok_or_else(|| actix_web::error::ParseError::Incomplete)?;
-    // let file_fmt = header.to_str().unwrap().replace("image/", "");
-    // let filename = format!("{}.{}", id::PostId::generate().to_string(), file_fmt);
-    // let re =
-    //     regex::Regex::new(r"([a-zA-Z0-9\s_\\.\-\(\):])+(.webp|.jpeg|.png|.gif|.jpg|.tiff|.bmp)$")
-    //         .unwrap();
-    // let valid;
-    // if re.is_match(&filename) {
-    //     let filepath = format!("./static/images/{}", sanitize_filename::sanitize(&filename));
-    //     let mut f = async_std::fs::File::create(filepath).await?;
-    //     while let Some(chunk) = payload.next().await {
-    //         let data = chunk.unwrap();
-    //         f.write_all(&data).await?;
-    //     }
-    //     valid = true;
-    // } else {
-    //     valid = false;
-    // };
-    // if valid {
-    //     Ok(HttpResponse::Ok().json(json!({
-    //         "url": format!("{}/images/{}", *BASE_URL, filename),
-    //         "deletion_url": format!("{}/delete/{}", *BASE_URL,filename)
-    //     })))
-    // } else {
-    //     Ok(HttpResponse::BadRequest().json(json!({
-    //         "message": "No valid Image"
-    //     })))
-    // }
-    todo!()
-}
-
-async fn save_file(mut payload: Multipart) -> Result<HttpResponse, Error> {
+async fn save_file() -> Result<HttpResponse, Error> {
     // let mut f_n = "".to_string();
     // let mut valid = false;
     // let mut filevec = Vec::new();
@@ -76,7 +61,7 @@ async fn save_file(mut payload: Multipart) -> Result<HttpResponse, Error> {
     //         .get_filename()
     //         .ok_or_else(|| actix_web::error::ParseError::Incomplete)?;
     //     let re = regex::Regex::new(
-    //         r"([a-zA-Z0-9\s_\\.\-\(\):])+(.webp|.jpeg|.png|.gif|.jpg|.tiff|.bmp)$",
+    //         r"([a-zA-Z0-9\s_\\.\-():])+(.webp|.jpeg|.png|.gif|.jpg|.tiff|.bmp)$",
     //     )
     //         .unwrap();
     //     if re.is_match(filename) {
@@ -107,20 +92,19 @@ async fn save_file(mut payload: Multipart) -> Result<HttpResponse, Error> {
     //         "message": "No valid Image"
     //     })))
     // }
-    //
+
     todo!()
 }
 
-
 async fn process_file(path: web::Path<String>) -> impl Responder {
-    // let filename = path.into_inner();
-    // let process_id = Uuid::new_v4().to_string();
-    // let data = json!({
-    //     "input": format!("s3://transcribe-ids721/{}", filename),
-    //     "name": format!("Execution-{}", process_id),
-    //     "stateMachineArn": "arn:aws:states:us-east-1:718203338152:stateMachine:transcribe"
-    // });
-    //
+    let filename = path.into_inner();
+    let process_id = Uuid::new_v4().to_string();
+    let _data = json!({
+        "input": format!("s3://transcribe-ids721/{}", filename),
+        "name": format!("Execution-{}", process_id),
+        "stateMachineArn": "arn:aws:states:us-east-1:718203338152:stateMachine:transcribe"
+    });
+
     // let client = Client::new();
     // let response = client.post("https://wrnqr49qhe.execute-api.us-east-1.amazonaws.com/beta/execution")
     //     .json(&data)
@@ -145,15 +129,17 @@ async fn main() -> std::io::Result<()> {
     let config = aws_config::load_from_env().await;
     let s3_client = aws_sdk_s3::Client::new(&config);
 
+    std::fs::create_dir_all("./tmp").unwrap();
+
+    tracing::info!("Starting service at 127.0.0.1:8000");
     HttpServer::new(move || {
         App::new()
-            .data(AppState {
-                s3_client: s3_client.clone(),
-            })
             .service(fs::Files::new("/", "../templates").index_file("index.html"))
-            .route("/", web::get().to(index))
-            // .route("/upload", web::post().to(upload_file))
-            .route("/process/{filename}", web::post().to(process_file))
+            // .route("/upload", web::post().to(upload_to_s3))
+            // .route("/process/{filename}", web::post().to(process_file))
+            .service(upload_to_s3)
+            .wrap(TracingLogger::default())
+            .app_data(web::Data::new(s3_client.clone()))
     })
         .bind("127.0.0.1:8000")?
         .run()
