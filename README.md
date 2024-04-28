@@ -1,6 +1,6 @@
-# FastAPI AWS S3 File Upload and Processing
+# Operationalizing Audio Transcription and Blog Generation - Rust Web Service
 
-This is a simple FastAPI application that allows users to upload files to an AWS S3 bucket and process them using AWS Step Functions. You can access a currently-running instance of the application at `https://audio-to-blog.vercel.app/`.
+This is a simple Rust Actix web application that allows users to upload the audio file of a conversation/interview and get a blog summarizing what was discussed. The user uploaded audio file is automatically stored to an AWS S3 bucket. The audio file is processed using AWS Step Functions, which uses a speech to text model and an LLM to generate automatically generate blog about the conversation. 
 
 ## Deployment (Local)
 
