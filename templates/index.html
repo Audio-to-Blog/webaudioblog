@@ -50,10 +50,12 @@
         <div id="loading">Processing... <i class="fas fa-spinner fa-spin"></i></div>
         <div id="result" class="alert alert-dismissible fade show mt-3" role="alert" style="display: none;"></div>
     </div>
-
+ 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
         document.getElementById('uploadForm').onsubmit = async function(e) {
+            console.log("prevent default")
             e.preventDefault();
             if (!this.checkValidity()) {
                 e.stopPropagation();
@@ -61,17 +63,19 @@
                 return;
             }
             var formData = new FormData(this);
+            console.log("before loading")
             document.getElementById('loading').style.display = 'block';
+            console.log("before result")
             document.getElementById('result').style.display = 'none';
-        
+       
             fetch('/upload', { method: 'POST', body: formData })
                 .then(response => response.json())
                 .then(data => {
+                    console.log("got to data->")
                     if (data.filename) {
-                        return fetch('/process', {
+                        return fetch(`/process/${data.filename}`, {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({ filename: data.filename })
                         });
                     } else {
                         throw new Error(data.error || 'Unknown error');
@@ -90,15 +94,15 @@
                     document.getElementById('loading').style.display = 'none';
                 });
         };
-        
+       
         function startPolling(processId) {
             const intervalId = setInterval(() => {
-                fetch(`/status?processId=${processId}`)
+                fetch(`/status?process_id=${processId}`)
                     .then(response => response.json())
                     .then(data => {
                         if (data.complete) {
                             clearInterval(intervalId);
-                            document.getElementById('result').textContent = 'Result: ' + JSON.stringify(data.result);
+                            document.getElementById('result').innerHTML = 'Result: ' + marked.parse(JSON.stringify(data.result));
                             document.getElementById('result').classList.add('alert-success');
                             document.getElementById('result').style.display = 'block';
                             document.getElementById('loading').style.display = 'none';
