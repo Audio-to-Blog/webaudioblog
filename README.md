@@ -14,9 +14,19 @@ Amazon Transcribe is used to transcribe the user's conversation/interview to tex
 #### Rust Web Service for Model Inferences
 The web service, developed in Rust, automatically stores the user's audio file in an AWS S3 bucket. The /process API request automatically calls an AWS Step Function, which takes the file from the S3 bucket, transcribes it using AWS Transcribe, creates a blog using GPT-4 and calls a callback POST request to communicate the final blog back to the web service. The web service continously polls the callback until the blog is ready. See a brief documentation of the [AWS Step Function](https://github.com/Audio-to-Blog/AWS-Step-Function)
 
-#### Containerization and Kubernetes and CI/CD Pipeline
-The Rust web service uses Docker to prepare it for deployment. The containerized service is deployed on Kubernetes cluster, specifically [AWS ECS](https://aws.amazon.com/ecs/).
-Github Actions continuous integration and continuous deployment (CI/CD) pipeline is used automate the testing, building, and deployment of the web service. This framework supports rapid iteration and deployment of changes to the service and has been rigorously tested by our team. 
+#### Containerization, Kubernetes, and CI/CD Pipeline
+
+The Rust web service is containerized using Docker, allowing for seamless deployment across environments. Deployment is managed on an AWS EKS cluster configured with two subnets in different availability zones for improved reliability. The compute resources are allocated using AWS Fargate, which abstracts server management, using the following specifications:
+- **CPU Requests**: 256m (a quarter core)
+- **Memory Requests**: 512Mi (512 MiB)
+- **CPU Limits**: 512m (half a core)
+- **Memory Limits**: 1Gi (1 GiB)
+
+For deployment strategy, we use a RollingUpdate:
+- **Max Surge**: 1 (one additional pod during the update)
+- **Max Unavailable**: 1 (one pod can be unavailable during the update)
+
+Our CI/CD pipeline, implemented via GitHub Actions, builds the Docker image and pushes it to AWS ECR. The image is then deployed to the AWS EKS cluster. The Fargate configuration uses a private subnet, enhancing the security of the deployment environment.
 
 #### Monitoring and Metrics
  Amazon CloudWatch is enabled on AWS Lambda functions for log group creation, log streams, and log events. For debugging with rust web service, the code is augmented with dense tracing and console outputs. The metrics are kept track of through the respective services' AWS portals. 
@@ -47,6 +57,6 @@ To deploy the application on Vercel, create a new Project and import this git re
 
 ## Team Size and Makeup
 The creators are:
-Hadi Chaudhri (Rust Web Service), Peter Liu (Rust Web Service), Benjamin Chauhan (Lambda Functions), Sanjeev (Step Function and Dockerization)
+Hadi Chaudhri (Rust Web Service), Peter Liu (Rust Web Service), Benjamin Chauhan (Lambda Functions), Sanjeev (Step Function, CICD, k8s and Dockerization)
 
 
