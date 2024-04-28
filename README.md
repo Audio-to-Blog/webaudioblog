@@ -17,7 +17,7 @@ The Rust web service uses Docker to prepare it for deployment. The containerized
 Github Actions continuous integration and continuous deployment (CI/CD) pipeline is used automate the testing, building, and deployment of the web service. This framework support rapid iteration and deployment of changes to the service and has been rigorously tested by our team.
 
 #### Monitoring and Metrics
-We enable Amazon CloudWatch on our AWS Lambda functions for log group creation, log streams, and log events. For debugging with rust web service, we augment our code with dense tracing and console outputs. We keep track of metrics through the respective services' AWS portals. 
+ Amazon CloudWatch is enabled on AWS Lambda functions for log group creation, log streams, and log events. For debugging with rust web service, the code is augmented with dense tracing and console outputs. The metrics are kept track of through the respective services' AWS portals. 
 
 
 ## Demo Video 
