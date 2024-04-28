@@ -1,37 +1,35 @@
-apiVersion: apps/v1 
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: kubernetes-demo-hello-app
-  labels: 
-     app: hello-app
-
+  labels:
+    app: hello-app
 spec:
-  replicas: 1 
+  replicas: 1
   selector:
     matchLabels:
       app: hello-app
-
   template:
     metadata:
       labels:
         app: hello-app
     spec:
       containers:
-      - name: hello-app
-        image: DOCKER_IMAGE
-        imagePullPolicy: Always
-        ports:
-        - containerPort: 8080
-        resources:
-          requests:
-            cpu: "256m"   # Requests a quarter core.
-            memory: "512Mi"  # Requests 512 MiB of memory.
-          limits:
-            cpu: "512m"   # Limits the CPU usage to half a core.
-            memory: "1Gi"  # Limits the memory usage to 1 GiB.
-         envFrom:
-        - secretRef:
-            name: my-secret 
+        - name: hello-app
+          image: DOCKER_IMAGE
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: "256m"   # Requests a quarter core.
+              memory: "512Mi"  # Requests 512 MiB of memory.
+            limits:
+              cpu: "512m"   # Limits the CPU usage to half a core.
+              memory: "1Gi"  # Limits the memory usage to 1 GiB.
+          envFrom:
+            - secretRef:
+                name: my-secret
   strategy:
     type: RollingUpdate
     rollingUpdate:
