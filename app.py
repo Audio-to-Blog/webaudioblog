@@ -4,9 +4,7 @@ import requests
 import os
 import uuid
 from werkzeug.utils import secure_filename
-from dotenv import load_dotenv
 
-load_dotenv()
 
 app = Flask(__name__)
 processing_status = {}  # Simple in-memory storage
