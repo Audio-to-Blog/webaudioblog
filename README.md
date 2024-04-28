@@ -53,7 +53,7 @@ To deploy the application on Vercel, create a new Project and import this git re
 
 ## Usage (Local)
 
-1. Navigate to the service url (see above) in your web browser.
+1. Navigate to the service url in your web browser. If you do not have your own, use https://blogger.sanjeev.one/ .
 2. Click on the "Choose File" button to select a file for upload.
 3. Click on the "Upload" button to upload the selected file to the AWS S3 bucket.
 4. Once the file is uploaded, you will receive a message confirming the successful upload and the filename.
