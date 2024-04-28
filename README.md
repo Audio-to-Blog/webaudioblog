@@ -2,7 +2,7 @@
 
 This is a simple Rust Actix web application that allows users to upload the audio file of a conversation/interview and get a blog summarizing what was discussed. 
 
-## Workflow
+## Components
 
 The user uploaded audio file is automatically stored to an AWS S3 bucket. The audio file is processed using AWS Step Functions, which uses a speech to text model and an LLM to generate automatically generate blog about the conversation. 
 
@@ -10,13 +10,17 @@ The user uploaded audio file is automatically stored to an AWS S3 bucket. The au
 Amazon Transcribe is used to transcribe the user's conversation/interview to text. The model is efficient and capable of text inferences based on input audio it receives. You can find details of Amazon Transcribe [here](https://aws.amazon.com/pm/transcribe/?gclid=CjwKCAjwxLKxBhA7EiwAXO0R0K6QsdXV2XsDvlKZim3tfYUJRmjjIXDTcCbMHlZT-MEk5SGwjxCDpxoC6OoQAvD_BwE&trk=aae0a267-33fa-4d21-a4d5-30b7b3fd731e&sc_channel=ps&ef_id=CjwKCAjwxLKxBhA7EiwAXO0R0K6QsdXV2XsDvlKZim3tfYUJRmjjIXDTcCbMHlZT-MEk5SGwjxCDpxoC6OoQAvD_BwE:G:s&s_kwcid=AL!4422!3!648922763916!e!!g!!amazon%20transcription!19597968945!143908652045)
 
 #### Rust Web Service for Model Inferences
-A web service in Rust is developed such that it automatically stores the user's audio file in an AWS S3 bucket. The /process API request automatically calls an AWS Step Function, which takes the file from the S3 bucket, transcribes it using AWS Transcribe, creates a blog using GPT-4 and calls a callback POST request to communicate the final blog back to the web service.
+The web service, developed in Rust, automatically stores the user's audio file in an AWS S3 bucket. The /process API request automatically calls an AWS Step Function, which takes the file from the S3 bucket, transcribes it using AWS Transcribe, creates a blog using GPT-4 and calls a callback POST request to communicate the final blog back to the web service. The web service continously polls the callback until the blog is ready.
 
-#### Containerization and Kubernetes 
-The Rust web service using Docker preparing it for deployment. The containerized service is deploted a Kubernetes cluster, specifically [AWS ECS](https://aws.amazon.com/ecs/).
+#### Containerization and Kubernetes and CI/CD Pipeline
+The Rust web service uses Docker to prepare it for deployment. The containerized service is deployed on Kubernetes cluster, specifically [AWS ECS](https://aws.amazon.com/ecs/).
+Github Actions continuous integration and continuous deployment (CI/CD) pipeline is used automate the testing, building, and deployment of the web service. This framework support rapid iteration and deployment of changes to the service and has been rigorously tested by our team.
 
-#### CI/CD Pipeline
-Github Actions continuous integration and continuous deployment (CI/CD) pipeline is used automate the testing, building, and deployment of the web service.
+#### Monitoring and Metrics
+We enable Amazon CloudWatch on our AWS Lambda functions for log group creation, log streams, and log events. For debugging with rust web service, we augment our code with dense tracing and console outputs. We keep track of metrics through the respective services' AWS portals. 
+
+
+## Demo Video 
 
 ## Deployment (Local)
 
