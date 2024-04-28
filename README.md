@@ -6,16 +6,16 @@ This is a simple Rust Actix web application that allows users to upload the audi
 
 The user uploaded audio file is automatically stored to an AWS S3 bucket. The audio file is processed using AWS Step Functions, which uses a speech to text model and an LLM to generate automatically generate blog about the conversation. 
 
-### Inference ML Model
+#### Inference ML Model
 Amazon Transcribe is used to transcribe audio to text. The model is efficient and capable of inferences based on input data it receives. You can find details of Amazon Transcribe [here](https://aws.amazon.com/pm/transcribe/?gclid=CjwKCAjwxLKxBhA7EiwAXO0R0K6QsdXV2XsDvlKZim3tfYUJRmjjIXDTcCbMHlZT-MEk5SGwjxCDpxoC6OoQAvD_BwE&trk=aae0a267-33fa-4d21-a4d5-30b7b3fd731e&sc_channel=ps&ef_id=CjwKCAjwxLKxBhA7EiwAXO0R0K6QsdXV2XsDvlKZim3tfYUJRmjjIXDTcCbMHlZT-MEk5SGwjxCDpxoC6OoQAvD_BwE:G:s&s_kwcid=AL!4422!3!648922763916!e!!g!!amazon%20transcription!19597968945!143908652045)
 
 #### Rust Web Service for Model Inferences
 A web service in Rust is developed such that it automatically stores the user's audio file in an AWS S3 bucket. The /process API request automatically calls an AWS Step Function, which takes the file from the S3 bucket, transcribes it using AWS Transcribe, creates a blog using GPT-4 and calls a callback POST request to communicate the final blog back to the web service.
 
-### Containerization and Kubernetes 
+#### Containerization and Kubernetes 
 The Rust web service using Docker preparing it for deployment. The containerized service is deploted a Kubernetes cluster, specifically [AWS ECS](https://aws.amazon.com/ecs/).
 
-### CI/CD Pipeline
+#### CI/CD Pipeline
 Github Actions continuous integration and continuous deployment (CI/CD) pipeline is used automate the testing, building, and deployment of the web service.
 
 ## Deployment (Local)
