@@ -3,7 +3,7 @@ name: Deploy to ECR
 on:
  
   push:
-    branches: [ master ]
+   
 
 env:
   ECR_REPOSITORY: ids721final
