@@ -46,7 +46,7 @@ To deploy the application on Vercel, create a new Project and import this git re
 6. Click on the "Process" button to start the processing. The processing status will be updated in real-time.
 
 ## Team Size and Makeup
-The creators of this project are: 
+The creators are:
 Hadi Chaudhri (Rust Web Service), Peter Liu (Rust Web Service), Benjamin Chauhan (Lambda Functions), Sanjeev (Step Function and Dockerization)
 
 
