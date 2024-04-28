@@ -7,7 +7,7 @@ This is a simple Rust Actix web application that allows users to upload the audi
 The user uploaded audio file is automatically stored to an AWS S3 bucket. The audio file is processed using AWS Step Functions, which uses a speech to text model and an LLM to generate automatically generate blog about the conversation. 
 
 ### Inference ML Model
-Amazon Transcribe is used to transcribe audio to text. The model is efficient and capable of inferences based on input data it receives. You can find details of Amazon Transcribe [here](https://pages.github.com/](https://aws.amazon.com/pm/transcribe/?gclid=CjwKCAjwxLKxBhA7EiwAXO0R0K6QsdXV2XsDvlKZim3tfYUJRmjjIXDTcCbMHlZT-MEk5SGwjxCDpxoC6OoQAvD_BwE&trk=aae0a267-33fa-4d21-a4d5-30b7b3fd731e&sc_channel=ps&ef_id=CjwKCAjwxLKxBhA7EiwAXO0R0K6QsdXV2XsDvlKZim3tfYUJRmjjIXDTcCbMHlZT-MEk5SGwjxCDpxoC6OoQAvD_BwE:G:s&s_kwcid=AL!4422!3!648922763916!e!!g!!amazon%20transcription!19597968945!143908652045)).
+Amazon Transcribe is used to transcribe audio to text. The model is efficient and capable of inferences based on input data it receives. You can find details of Amazon Transcribe [here](https://aws.amazon.com/pm/transcribe/?gclid=CjwKCAjwxLKxBhA7EiwAXO0R0K6QsdXV2XsDvlKZim3tfYUJRmjjIXDTcCbMHlZT-MEk5SGwjxCDpxoC6OoQAvD_BwE&trk=aae0a267-33fa-4d21-a4d5-30b7b3fd731e&sc_channel=ps&ef_id=CjwKCAjwxLKxBhA7EiwAXO0R0K6QsdXV2XsDvlKZim3tfYUJRmjjIXDTcCbMHlZT-MEk5SGwjxCDpxoC6OoQAvD_BwE:G:s&s_kwcid=AL!4422!3!648922763916!e!!g!!amazon%20transcription!19597968945!143908652045)
 
 
 
