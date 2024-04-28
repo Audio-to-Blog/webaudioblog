@@ -50,12 +50,12 @@ jobs:
       run: aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_REGION
 
 
-    - name: Create K8s secret
-      run: |
-        kubectl create secret generic my-secret \
-        --from-literal=AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}" \
-        --from-literal=AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
-        -o yaml | kubectl apply -f -
+    # - name: Create K8s secret
+    #   run: |
+    #     kubectl create secret generic my-secret \
+    #     --from-literal=AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}" \
+    #     --from-literal=AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
+    #     -o yaml | kubectl apply -f -
 
     - name: Deploy to EKS
       env:
@@ -67,6 +67,6 @@ jobs:
         kubectl apply -f manifests/hello-app-service.yaml
 
 
-    - name: Describe Kubernetes secret
-      run: |
-        kubectl describe secret my-secret
+    # - name: Describe Kubernetes secret
+    #   run: |
+    #     kubectl describe secret my-secret
