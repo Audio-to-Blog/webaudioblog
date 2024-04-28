@@ -1,161 +1,139 @@
-mod s3;
 
-use actix_web::{web, App, HttpResponse, HttpServer, Responder, HttpRequest};
+use actix_web::{web, App, HttpServer, HttpResponse, Responder, middleware::Logger, http::StatusCode};
+use serde::{Serialize, Deserialize};
+use std::sync::Mutex;
+use serde_json::json; // at the top of your file
+use std::collections::HashMap;
 use actix_files as fs;
-use actix_multipart::Multipart;
-use actix_web::{post, Error};
-use futures::{StreamExt, TryStreamExt};
-use std::str::FromStr;
-use uuid::Uuid;
-use reqwest::Client;
-use serde_json::json;
-use std::io::Read;
-use std::io::Write;
-use actix_web::web::Payload;
-use s3::PutFile;
-use aws_sdk_s3::Client as S3Client;
+use std::sync::Arc; // at the top of your file
 
+const S3_BUCKET: &str = "transcribe-ids721";
+const STATE_MACHINE_ARN: &str = "arn:aws:states:us-east-1:718203338152:stateMachine:transcribe";
+const API_URL: &str = "https://wrnqr49qhe.execute-api.us-east-1.amazonaws.com/beta/execution";
 
-async fn index() -> impl Responder {
-    HttpResponse::Ok().body("Hello world!")
+#[derive(Serialize, Deserialize)]
+struct CallbackData {
+    text_result: String,
+}
+
+#[derive(Serialize, Deserialize)]
+struct ProcessResponse {
+    message: String,
+    process_id: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+struct StatusResponse {
+    complete: bool,
+    result: Option<String>,
 }
 
 struct AppState {
-    s3_client: S3Client,
+    processing_status: Arc<Mutex<HashMap<String, StatusResponse>>>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct ExternalApiResponse {
+    executionArn: String,
+}
+
+async fn callback(
+    path: web::Path<String>, 
+    data: web::Json<CallbackData>,
+    state: web::Data<AppState>
+) -> impl Responder {
+let process_id = path.into_inner();
+let text_result = data.into_inner().text_result;
+{
+    let mut ps = state.processing_status.lock().unwrap();
+    if let Some(status) = ps.get_mut(&process_id) {
+        *status = StatusResponse { complete: true, result: Some(text_result) };
+        return HttpResponse::Ok().json(json!({"status": "success", "data": status.result}))
+    }
+}
+
+HttpResponse::NotFound().json(json!({"error": "Process ID not found"}))
+}
+
+async fn process_file(
+    path: web::Path<String>,
+    data: web::Data<AppState>,
+) -> impl Responder {
+    let filename = path.into_inner();
+
+    if filename.is_empty() {
+        return HttpResponse::BadRequest().json(json!({"error": "Filename is missing"}));
+    }
+
+    let client = reqwest::Client::new();
+    let input_data = json!({ "filename": format!("s3://{}/{}", S3_BUCKET, filename) });
+    
+    let res = client.post(API_URL)
+        .json(&json!({
+            "input": input_data,  // Make sure this matches the exact JSON format required by the AWS API
+            "stateMachineArn": STATE_MACHINE_ARN,
+        }))
+        .send()
+        .await;
+
+    match res {
+        Ok(response) if response.status().is_success() => {
+            let api_response: ExternalApiResponse = response.json().await.unwrap();
+            let process_id = api_response.executionArn.split(":").last().unwrap().to_string();
+            
+            let mut status_map = data.processing_status.lock().unwrap();
+            status_map.insert(process_id.clone(), StatusResponse { complete: false, result: None });
+            
+            HttpResponse::Ok().json(json!({ "message": "Processing started", "processId": process_id }))
+        },
+        Ok(response) => HttpResponse::InternalServerError().json(json!({"error": response.status().as_u16()})),
+        Err(e) => HttpResponse::InternalServerError().json(json!({"error": e.to_string()}))
+    }
 }
 
 
-#[post("/image")]
-async fn file_save_rest(req: HttpRequest, mut payload: Payload) -> Result<HttpResponse, Error> {
-    // // let filename = parse_filename_from_uri(&req.uri().to_string())
-    // //     .ok_or_else(|| actix_web::error::ParseError::Incomplete)?;
-    // let header = req
-    //     .headers()
-    //     .get("Content-Type")
-    //     .ok_or_else(|| actix_web::error::ParseError::Incomplete)?;
-    // let file_fmt = header.to_str().unwrap().replace("image/", "");
-    // let filename = format!("{}.{}", id::PostId::generate().to_string(), file_fmt);
-    // let re =
-    //     regex::Regex::new(r"([a-zA-Z0-9\s_\\.\-\(\):])+(.webp|.jpeg|.png|.gif|.jpg|.tiff|.bmp)$")
-    //         .unwrap();
-    // let valid;
-    // if re.is_match(&filename) {
-    //     let filepath = format!("./static/images/{}", sanitize_filename::sanitize(&filename));
-    //     let mut f = async_std::fs::File::create(filepath).await?;
-    //     while let Some(chunk) = payload.next().await {
-    //         let data = chunk.unwrap();
-    //         f.write_all(&data).await?;
-    //     }
-    //     valid = true;
-    // } else {
-    //     valid = false;
-    // };
-    // if valid {
-    //     Ok(HttpResponse::Ok().json(json!({
-    //         "url": format!("{}/images/{}", *BASE_URL, filename),
-    //         "deletion_url": format!("{}/delete/{}", *BASE_URL,filename)
-    //     })))
-    // } else {
-    //     Ok(HttpResponse::BadRequest().json(json!({
-    //         "message": "No valid Image"
-    //     })))
-    // }
-    todo!()
+
+async fn check_status(query: web::Query<HashMap<String, String>>, state: web::Data<AppState>) -> impl Responder {
+    let process_id = match query.get("process_id") {
+    Some(id) => id,
+    None => return HttpResponse::BadRequest().body("process_id is required"),
+    };
+
+    let ps = state.processing_status.lock().unwrap();
+    if let Some(status) = ps.get(process_id) {
+        HttpResponse::Ok().json(status)
+    } else {
+        HttpResponse::NotFound().finish()
+    }
 }
 
-async fn save_file(mut payload: Multipart) -> Result<HttpResponse, Error> {
-    // let mut f_n = "".to_string();
-    // let mut valid = false;
-    // let mut filevec = Vec::new();
-    // while let Ok(Some(mut field)) = payload.try_next().await {
-    //     let content_type = field
-    //         .content_disposition()
-    //         .ok_or_else(|| actix_web::error::ParseError::Incomplete)?;
-    //     println!("{:?}", content_type);
-    //     let filename = content_type
-    //         .get_filename()
-    //         .ok_or_else(|| actix_web::error::ParseError::Incomplete)?;
-    //     let re = regex::Regex::new(
-    //         r"([a-zA-Z0-9\s_\\.\-\(\):])+(.webp|.jpeg|.png|.gif|.jpg|.tiff|.bmp)$",
-    //     )
-    //         .unwrap();
-    //     if re.is_match(filename) {
-    //         let out = filename.split(".").collect::<Vec<&str>>()[1];
-    //         let filename = format!("{}.{}", id::PostId::generate().to_string(), out);
-    //         println!("{}", filename);
-    //         let filepath = format!("./static/images/{}", sanitize_filename::sanitize(&filename));
-    //         f_n = filename.to_string();
-    //         let mut f = async_std::fs::File::create(filepath).await?;
-    //         while let Some(chunk) = field.next().await {
-    //             let data = chunk.unwrap();
-    //             f.write_all(&data).await?;
-    //         }
-    //         filevec.push(json!({
-    //             "url": format!("{}/images/{}", *BASE_URL, f_n) ,
-    //             "deletion_url": format!("{}/delete/{}", *BASE_URL,f_n)
-    //         }));
-    //         valid = true;
-    //     } else {
-    //         valid = false;
-    //     }
-    // }
-    // //let uri = req.uri();
-    // if valid {
-    //     Ok(HttpResponse::Ok().json(json!({ "images": filevec })))
-    // } else {
-    //     Ok(HttpResponse::BadRequest().json(json!({
-    //         "message": "No valid Image"
-    //     })))
-    // }
-    //
-    todo!()
+async fn index() -> impl Responder {
+    fs::NamedFile::open_async("./templates/index.html").await.unwrap()
 }
 
 
-async fn process_file(path: web::Path<String>) -> impl Responder {
-    // let filename = path.into_inner();
-    // let process_id = Uuid::new_v4().to_string();
-    // let data = json!({
-    //     "input": format!("s3://transcribe-ids721/{}", filename),
-    //     "name": format!("Execution-{}", process_id),
-    //     "stateMachineArn": "arn:aws:states:us-east-1:718203338152:stateMachine:transcribe"
-    // });
-    //
-    // let client = Client::new();
-    // let response = client.post("https://wrnqr49qhe.execute-api.us-east-1.amazonaws.com/beta/execution")
-    //     .json(&data)
-    //     .send()
-    //     .await;
-    //
-    // match response {
-    //     Ok(res) => {
-    //         if res.status().is_success() {
-    //             HttpResponse::Ok().json(json!({ "message": "Processing started", "processId": process_id }))
-    //         } else {
-    //             HttpResponse::BadRequest().json(json!({ "error": "Error initiating processing" }))
-    //         }
-    //     }
-    //     Err(_) => HttpResponse::BadRequest().body("Filename is missing"),
-    // }
-    HttpResponse::Ok()
-}
 
-#[actix_web::main]
+#[actix_web::main] // This attribute macro will set up the async runtime for you
 async fn main() -> std::io::Result<()> {
-    let config = aws_config::load_from_env().await;
-    let s3_client = aws_sdk_s3::Client::new(&config);
-
+    let processing_status = Arc::new(Mutex::new(HashMap::new()));
+    
     HttpServer::new(move || {
+        let processing_status = Arc::clone(&processing_status);
+        
         App::new()
-            .data(AppState {
-                s3_client: s3_client.clone(),
-            })
-            .service(fs::Files::new("/", "../templates").index_file("index.html"))
-            .route("/", web::get().to(index))
-            // .route("/upload", web::post().to(upload_file))
-            .route("/process/{filename}", web::post().to(process_file))
+            .app_data(web::Data::new(AppState {
+                processing_status
+            }))
+            .wrap(Logger::default())
+            .service(web::resource("/").route(web::get().to(index)))
+            .service(fs::Files::new("/static", "./static"))
+            .service(web::resource("/process/{filename}").to(process_file))
+            .service(web::resource("/callback/{process_id}").to(callback))
+            .service(web::resource("/status").to(check_status))
     })
-        .bind("127.0.0.1:8000")?
-        .run()
-        .await
+    .bind("127.0.0.1:8080")?
+    .run()
+    .await?; // The `.await` will asynchronously wait for the server to finish running
+
+    Ok(())
 }
