@@ -16,7 +16,7 @@ The web service, developed in Rust, automatically stores the user's audio file i
 
 #### Containerization and Kubernetes and CI/CD Pipeline
 The Rust web service uses Docker to prepare it for deployment. The containerized service is deployed on Kubernetes cluster, specifically [AWS ECS](https://aws.amazon.com/ecs/).
-Github Actions continuous integration and continuous deployment (CI/CD) pipeline is used automate the testing, building, and deployment of the web service. This framework support rapid iteration and deployment of changes to the service and has been rigorously tested by our team.
+Github Actions continuous integration and continuous deployment (CI/CD) pipeline is used automate the testing, building, and deployment of the web service. This framework supports rapid iteration and deployment of changes to the service and has been rigorously tested by our team.
 
 #### Monitoring and Metrics
  Amazon CloudWatch is enabled on AWS Lambda functions for log group creation, log streams, and log events. For debugging with rust web service, the code is augmented with dense tracing and console outputs. The metrics are kept track of through the respective services' AWS portals. 
