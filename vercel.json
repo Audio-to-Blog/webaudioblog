@@ -10,6 +10,7 @@
       },
       {
         "src": "/(.*)",
+        "methods": ["GET"],
         "dest": "/public/index.html",
         "status": 404
       }
